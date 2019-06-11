@@ -1,79 +1,121 @@
 function buildMetadata(sample) {
+    // Using `d3.json` to fetch the metadata for a sample
 
-    // @TODO: Complete the following function that builds the metadata panel
+    var url = `/metadata/${sample}`;
 
-    // Use `d3.json` to fetch the metadata for a sample
-    const metadataURL = "/metadata/" + sample;
-    d3.json(metadataURL).then((data) => {
+    d3.json(url).then(function(sampleid) {
+        //console.log(sampleid);
 
-        // Use d3 to select the panel with id of `#sample-metadata`
-        metadatapanel = d3.select("#sample-metadata");
+        // Using d3 to select the panel with id of `#sample-metadata`
+        var metadata = d3.select("#sample-metadata");
 
-        // Use `.html("") to clear any existing metadata
-        metadatapanel.html("");
+        // Using `.html("") to clear any existing metadata
+        metadata.html("");
 
-        // Use `Object.entries` to add each key and value pair to the panel
-        // Hint: Inside the loop, you will need to use d3 to append new
-        // tags for each key-value in the metadata.
-        Object.entries(data).forEach(([key, value]) => {
-            metadatapanel.append("p").text(`${key}: ${value}`);
+        // Using `Object.entries` to add each key and value pair to the panel
+        // Using d3 to append new tags for each key-value in the metadata. 'p' used for new tags
+        Object.entries(sampleid).forEach(([key, value]) => {
+            metadata.append('p').text(`${key}: ${value}`);
         });
+    })
+};
 
-        // BONUS: Build the Gauge Chart
-        // buildGauge(data.WFREQ);
-        buildGauge(data.WFREQ);
+// Function for the scatter/bubble chart
+function buildScatter(sample) {
+
+
+    d3.json(`/samples/${sample}`).then(function(data) {
+        // console.log(data);
+        // console.log(data.otu_ids);
+        // console.log(data.otu_labels);
+        console.log(data.sample_values);
+
+
+        //Set up identifiers/variables
+        var otu_ids = data.otu_ids;
+        var otu_labels = data.otu_labels;
+        var sample_values = data.sample_values;
+        //var sample_values10 = data.sample_values;
+        console.log(sample_values);
+
+
+
+        //Setting up the Scatter chart
+        var scatterdata = [{
+            x: otu_ids,
+            y: sample_values,
+            text: otu_labels,
+            type: "scatter",
+            mode: 'markers',
+            marker: {
+                size: sample_values,
+                color: otu_ids,
+                colorscale: 'Rainbow'
+            }
+        }];
+
+        var scatterlayout = {
+            automargin: true,
+            hovermode: 'closest',
+            xaxis: {
+                title: 'SELECTED OTU ID'
+            },
+        };
+
+        Plotly.new
+        Plot('bubble', scatterdata, scatterlayout);
     });
 }
 
-function buildCharts(sample) {
 
-    // @TODO: Use `d3.json` to fetch the sample data for the plots
-    const sampleDataURL = "/samples/" + sample;
-    d3.json(sampleDataURL).then((data) => {
-        // @TODO: Build a Bubble Chart using the sample data
+//Function to set up pie chart
+function buildPie(sample) {
 
-        // @TODO: Build a Pie Chart
-        // HINT: You will need to use slice() to grab the top 10 sample_values,
-        // otu_ids, and labels (10 each).
-        results = [];
-        for (var i = 0; i < data.otu_ids.length; i++) {
-            results.push({ "otu_ids": data.otu_ids[i], "otu_labels": data.otu_labels[i], "sample_values": data.sample_values[i] });
 
-        };
-        results.sort((a, b) => b.sample_values - a.sample_values);
-        results = results.slice(0, 10);
-        console.log(results);
+    d3.json(`/samples/${sample}`).then(function(datapie) {
+        // console.log(datapie);
+        // console.log(datapie.otu_ids);
+        // console.log(datapie.otu_labels);
+        //console.log(datapie.sample_values);
 
-        // Trace for the sample data
-        var trace1 = {
-            values: results.map(row => row.sample_values),
-            labels: results.map(row => row.otu_ids),
-            hovertext: results.map(row => row.otu_labels),
-            hoverinfo: "hovertext",
-            type: "pie"
-
+        function compareNumbers(a, b) {
+            return b - a;
         };
 
-        // @TODO: Build a Bubble Chart using the sample data
+        //Set up identifiers/variables
+        var otu_ids_pie = datapie.otu_ids;
+        var otu_labels_pie = datapie.otu_labels;
+        var sample_values10 = datapie.sample_values;
+        //console.log(sample_values10);
 
-        var pieChart = [trace1];
-        Plotly.newPlot("pie", pieChart);
+        sample_values10.sort(compareNumbers);
+        console.log(sample_values10);
 
-        var trace2 = {
-            x: data.otu_ids,
-            y: data.sample_values,
-            type: "scatter",
-            mode: "markers",
-            marker: {
-                size: data.sample_values,
-                color: data.otu_ids
-            },
-            text: data.otu_labels
+        // USING THE BELOW OVERRIDES THE SAMPLE_VALUES VARIABLE AS WELL****************//
+        //console.log(sample_values10.sort(compareNumbers));
+        // Setting up the pie chart
+        var piedata = [{
+            values: sample_values10.slice(0, 10),
+            labels: otu_ids_pie.slice(0, 10),
+            hovertext: otu_labels_pie.slice(0, 10),
+            hoverinfo: 'hovertext',
+            type: 'pie',
+            transforms: [{
+                type: "sort",
+                target: "values",
+                order: "ascending"
+            }]
+        }];
+
+        var pielayout = {
+            automargin: true,
+            height: 600,
+            width: 700
         };
-        var bubbleChart = [trace2];
-        Plotly.newPlot("bubble", bubbleChart);
+
+        Plotly.newPlot('pie', piedata, pielayout);
+
     });
-
 }
 
 function init() {
@@ -91,16 +133,18 @@ function init() {
 
         // Use the first sample from the list to build the initial plots
         const firstSample = sampleNames[0];
-        buildCharts(firstSample);
+        buildScatter(firstSample);
+        buildPie(firstSample);
         buildMetadata(firstSample);
     });
 }
 
 function optionChanged(newSample) {
     // Fetch new data each time a new sample is selected
-    buildCharts(newSample);
+    buildScatter(newSample);
+    buildPie(newSample);
     buildMetadata(newSample);
-}
+};
 
 // Initialize the dashboard
 init();
